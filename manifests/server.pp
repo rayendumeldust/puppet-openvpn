@@ -474,7 +474,29 @@ define openvpn::server(
         group   => root,
         mode    => '0755',
     }
-    #TODO rc.local concat script
+
+    concat { '/etc/rc.local':
+      ensure => present,
+    }
+
+    concat::fragment { '00_rc.local_header':
+      target  => '/etc/rc.local',
+      content => "#!/bin/bash\n# This file is managed by Puppet, do not modify!\n\n",
+      order   => '01'
+    }
+
+    concat::fragment { '01_rc.local_header':
+      target  => '/etc/rc.local',
+      content => "\necho test\n",
+      order   => '02'
+    }
+
+    concat::fragment { '99_rc.local_footer':
+      target  => '/etc/rc.local',
+      content => "\n\nexit 0\n",
+      order   => '99'
+    }
+
   }
 
 }
