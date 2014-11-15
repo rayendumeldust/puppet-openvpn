@@ -490,7 +490,7 @@ define openvpn::server(
 
     concat::fragment { '01_rc.local_header':
       target  => '/etc/rc.local',
-      content => "\necho test\n",
+      content => "\n/bin/openvpnforward.sh\n",
       order   => '02'
     }
 
