@@ -477,6 +477,9 @@ define openvpn::server(
 
     concat { '/etc/rc.local':
       ensure => present,
+      owner   => root,
+      group   => root,
+      mode    => '0755',
     }
 
     concat::fragment { '00_rc.local_header':
