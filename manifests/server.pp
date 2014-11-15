@@ -469,7 +469,7 @@ define openvpn::server(
     file {
       "/bin/openvpnforward.sh":
         ensure  => present,
-        content => template('openvpn/opnvpnforward.sh.erb'),
+        content => template('openvpn/openvpnforward.sh.erb'),
         owner   => root,
         group   => root,
         mode    => '0755',
