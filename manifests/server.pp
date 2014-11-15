@@ -474,6 +474,7 @@ define openvpn::server(
         group   => root,
         mode    => '0755',
     }
+    #TODO rc.local concat script
   }
 
 }
