@@ -2,4 +2,4 @@
 # Script to enable the OpenVPN config
 
 echo "1" > /proc/sys/net/ipv4/ip_forward
-/sbin/iptables -t nat -A POSTROUTING -o eth0 -s <%= @server %>/24 -j SNAT --to <%= @ipaddress %>
+/sbin/iptables -t nat -A POSTROUTING -o eth0 -s <%= @subnet %>/24 -j SNAT --to <%= @ipaddress %>

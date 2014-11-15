@@ -8,6 +8,9 @@
 #   Boolean. Run startupscript to forward VPN connections.
 #   Default: false
 #
+# [*subnet*]
+#   String. Addresspace of the VPN Subnet
+#
 # [*country*]
 #   String.  Country to be used for the SSL certificate, mandatory for server mode.
 #   Default: undef
@@ -309,6 +312,7 @@
 #
 define openvpn::server(
   $forward = false,
+  $subnet = undef,
   $country = undef,
   $province = undef,
   $city = undef,
