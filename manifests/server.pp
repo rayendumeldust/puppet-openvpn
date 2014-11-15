@@ -4,6 +4,10 @@
 #
 # === Parameters
 #
+# [*forward*]
+#   Boolean. Run startupscript to forward VPN connections.
+#   Default: false
+#
 # [*country*]
 #   String.  Country to be used for the SSL certificate, mandatory for server mode.
 #   Default: undef
@@ -304,6 +308,7 @@
 # limitations under the License.
 #
 define openvpn::server(
+  $forward = false,
   $country = undef,
   $province = undef,
   $city = undef,
@@ -457,6 +462,17 @@ define openvpn::server(
         ensure  => present,
         content => template('openvpn/ldap.erb'),
         require => Package['openvpn-auth-ldap'],
+    }
+  }
+  
+  if $forward == true {
+    file {
+      "/bin/openvpnforward.sh":
+        ensure  => present,
+        content => template('openvpn/opnvpnforward.sh.erb'),
+        owner   => root,
+        group   => root,
+        mode    => '0755',
     }
   }
 
