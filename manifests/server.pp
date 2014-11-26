@@ -4,6 +4,9 @@
 #
 # === Parameters
 #
+# [*syslog*]
+#   Boolean. Use the rsyslog facility of the OS.
+#   Default: true
 # [*forward*]
 #   Boolean. Run startupscript to forward VPN connections.
 #   Default: false
@@ -311,6 +314,7 @@
 # limitations under the License.
 #
 define openvpn::server(
+  $syslog = true,
   $forward = false,
   $subnet = undef,
   $country = undef,
