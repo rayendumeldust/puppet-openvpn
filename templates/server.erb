@@ -92,6 +92,9 @@ plugin /usr/lib/openvpn/openvpn-auth-pam.so login
 <% if @management -%>
 management <%= @management_ip %> <%= @management_port %>
 <% end -%>
+<% if @client_to_client -%>
+client-to-client
+<% end -%>
 <% if @up != '' or @down != ''-%>
 script-security 2
 <% end -%>

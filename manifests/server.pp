@@ -156,6 +156,10 @@
 #   String.  Port where the management interface will listen
 #   Default: 7505
 #
+# [*client_to_client*]
+#   String.  Let clients in the VPN talk to each other
+#   Default: false
+#
 # [*up*]
 #   String,  Script which we want to run when openvpn server starts
 #
@@ -350,6 +354,7 @@ define openvpn::server(
   $management = false,
   $management_ip = 'localhost',
   $management_port = 7505,
+  $client_to_client = false,
   $up = '',
   $down = '',
   $username_as_common_name = false,
