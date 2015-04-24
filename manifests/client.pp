@@ -83,6 +83,17 @@
 #   Boolean. Set if username and password required
 #   Default: false
 #
+# [*tls_auth*]
+#   Boolean. Activates tls-auth to Add an additional layer of HMAC
+#     authentication on top of the TLS control channel to protect
+#     against DoS attacks. This has to be set to the same value as on the
+#     Server
+#   Default: false
+#
+# [*x509_name*]
+#   Common name of openvpn server to make an x509-name verification
+#   Default: undef
+#
 # [*setenv*]
 #   Hash. Set a custom environmental variable name=value to pass to script.
 #   Default: {}
@@ -100,6 +111,18 @@
 #
 # [*down*]
 #   String,  Script which we want to run when openvpn client is disconneting
+#
+# [*sndbuf*]
+#   Integer, Set the TCP/UDP socket send buffer size.
+#   Default: undef
+#
+# [*rcvbuf*]
+#   Integer, Set the TCP/UDP socket receive buffer size.
+#   Default: undef
+#
+# [*shared_ca*]
+#   String,  The name of an openssl::ca resource to use.
+#   Default: undef
 #
 # === Examples
 #
@@ -137,26 +160,31 @@
 #
 define openvpn::client(
   $server,
-  $compression = 'comp-lzo',
-  $dev = 'tun',
-  $mute = '20',
+  $compression          = 'comp-lzo',
+  $dev                  = 'tun',
+  $mute                 = '20',
   $mute_replay_warnings = true,
-  $nobind = true,
-  $persist_key = true,
-  $persist_tun = true,
-  $port = '1194',
-  $proto = 'tcp',
-  $remote_host = $::fqdn,
-  $resolv_retry = 'infinite',
-  $auth_retry = 'none',
-  $verb = '3',
-  $pam = false,
-  $cipher = '',
-  $authuserpass = false,
-  $setenv = {},
-  $setenv_safe = {},
-  $up = '',
-  $down = '',
+  $nobind               = true,
+  $persist_key          = true,
+  $persist_tun          = true,
+  $port                 = '1194',
+  $proto                = 'tcp',
+  $remote_host          = $::fqdn,
+  $resolv_retry         = 'infinite',
+  $auth_retry           = 'none',
+  $verb                 = '3',
+  $pam                  = false,
+  $cipher               = undef,
+  $authuserpass         = false,
+  $setenv               = {},
+  $setenv_safe          = {},
+  $up                   = '',
+  $down                 = '',
+  $tls_auth             = false,
+  $x509_name            = undef,
+  $sndbuf               = undef,
+  $rcvbuf               = undef,
+  $shared_ca            = undef,
 ) {
 
   if $pam {
@@ -166,38 +194,49 @@ define openvpn::client(
   Openvpn::Server[$server] ->
   Openvpn::Client[$name]
 
-  exec {
-    "generate certificate for ${name} in context of ${server}":
-      command  => ". ./vars && ./pkitool ${name}",
-      cwd      => "/etc/openvpn/${server}/easy-rsa",
-      creates  => "/etc/openvpn/${server}/easy-rsa/keys/${name}.crt",
-      provider => 'shell';
+  $ca_name = pick($shared_ca, $server)
+  Openvpn::Ca[$ca_name] ->
+  Openvpn::Client[$name]
+
+  exec { "generate certificate for ${name} in context of ${ca_name}":
+    command  => ". ./vars && ./pkitool ${name}",
+    cwd      => "/etc/openvpn/${ca_name}/easy-rsa",
+    creates  => "/etc/openvpn/${ca_name}/easy-rsa/keys/${name}.crt",
+    provider => 'shell';
   }
 
-  file { "/etc/openvpn/${server}/download-configs/${name}":
+  file { [ "/etc/openvpn/${server}/download-configs/${name}",
+          "/etc/openvpn/${server}/download-configs/${name}/keys",
+          "/etc/openvpn/${server}/download-configs/${name}/keys/${name}" ]:
     ensure  => directory,
   }
 
-  file { "/etc/openvpn/${server}/download-configs/${name}/keys":
-    ensure  => directory,
+  file { "/etc/openvpn/${server}/download-configs/${name}/keys/${name}/${name}.crt":
+    ensure  => link,
+    target  => "/etc/openvpn/${ca_name}/easy-rsa/keys/${name}.crt",
+    require => Exec["generate certificate for ${name} in context of ${ca_name}"],
   }
 
-  file { "/etc/openvpn/${server}/download-configs/${name}/keys/${name}.crt":
+  file { "/etc/openvpn/${server}/download-configs/${name}/keys/${name}/${name}.key":
     ensure  => link,
-    target  => "/etc/openvpn/${server}/easy-rsa/keys/${name}.crt",
-    require => Exec["generate certificate for ${name} in context of ${server}"],
+    target  => "/etc/openvpn/${ca_name}/easy-rsa/keys/${name}.key",
+    require => Exec["generate certificate for ${name} in context of ${ca_name}"],
   }
 
-  file { "/etc/openvpn/${server}/download-configs/${name}/keys/${name}.key":
+  file { "/etc/openvpn/${server}/download-configs/${name}/keys/${name}/ca.crt":
     ensure  => link,
-    target  => "/etc/openvpn/${server}/easy-rsa/keys/${name}.key",
-    require => Exec["generate certificate for ${name} in context of ${server}"],
+    target  => "/etc/openvpn/${ca_name}/easy-rsa/keys/ca.crt",
+    require => Exec["generate certificate for ${name} in context of ${ca_name}"],
   }
 
-  file { "/etc/openvpn/${server}/download-configs/${name}/keys/ca.crt":
-    ensure  => link,
-    target  => "/etc/openvpn/${server}/easy-rsa/keys/ca.crt",
-    require => Exec["generate certificate for ${name} in context of ${server}"],
+  if $tls_auth {
+    file { "/etc/openvpn/${server}/download-configs/${name}/keys/${name}/ta.key":
+      ensure  => link,
+      target  => "/etc/openvpn/${server}/easy-rsa/keys/ta.key",
+      require => Exec["generate certificate for ${name} in context of ${server}"],
+      before  => Exec["tar the thing ${server} with ${name}"],
+      notify  => Exec["tar the thing ${server} with ${name}"],
+    }
   }
 
   file { "/etc/openvpn/${server}/download-configs/${name}/${name}.conf":
@@ -214,22 +253,22 @@ define openvpn::client(
     refreshonly => true,
     require     => [
       File["/etc/openvpn/${server}/download-configs/${name}/${name}.conf"],
-      File["/etc/openvpn/${server}/download-configs/${name}/keys/ca.crt"],
-      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}.key"],
-      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}.crt"]
+      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}/ca.crt"],
+      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}/${name}.key"],
+      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}/${name}.crt"]
     ],
     notify      => Exec["generate ${name}.ovpn in ${server}"],
   }
 
   exec { "generate ${name}.ovpn in ${server}":
     cwd         => "/etc/openvpn/${server}/download-configs/",
-    command     => "/bin/rm ${name}.ovpn; cat ${name}/${name}.conf | perl -lne 'if(m|^ca keys/ca.crt|){ chomp(\$ca=`cat ${name}/keys/ca.crt`); print \"<ca>\n\$ca\n</ca>\"} elsif(m|^cert keys/${name}.crt|) { chomp(\$crt=`cat ${name}/keys/${name}.crt`); print \"<cert>\n\$crt\n</cert>\"} elsif(m|^key keys/${name}.key|){ chomp(\$key=`cat ${name}/keys/${name}.key`); print \"<key>\n\$key\n</key>\"} else { print} ' > ${name}.ovpn",
+    command     => "/bin/rm ${name}.ovpn; cat ${name}/${name}.conf | perl -lne 'if(m|^ca keys/${name}/ca.crt|){ chomp(\$ca=`cat ${name}/keys/${name}/ca.crt`); print \"<ca>\n\$ca\n</ca>\"} elsif(m|^cert keys/${name}/${name}.crt|) { chomp(\$crt=`cat ${name}/keys/${name}/${name}.crt`); print \"<cert>\n\$crt\n</cert>\"} elsif(m|^key keys/${name}/${name}.key|){ chomp(\$key=`cat ${name}/keys/${name}/${name}.key`); print \"<key>\n\$key\n</key>\"} else { print} ' > ${name}.ovpn",
     refreshonly => true,
     require     => [
       File["/etc/openvpn/${server}/download-configs/${name}/${name}.conf"],
-      File["/etc/openvpn/${server}/download-configs/${name}/keys/ca.crt"],
-      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}.key"],
-      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}.crt"],
+      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}/ca.crt"],
+      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}/${name}.key"],
+      File["/etc/openvpn/${server}/download-configs/${name}/keys/${name}/${name}.crt"],
     ],
   }
 

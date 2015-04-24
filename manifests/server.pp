@@ -91,7 +91,11 @@
 #
 # [*status_log*]
 #   String.  Logfile for periodic dumps of the vpn service status
-#   Default: "${name}/openvpn-status.log"
+#   Default: "/var/log/openvpn/${name}-status.log"
+#
+# [*status_version*]
+#   Integer. Choose the status file format version number. Can be 1, 2 or 3 and defaults to 1
+#   Default: None (=1)
 #
 # [*server*]
 #   String.  Network to assign client addresses out of
@@ -275,6 +279,21 @@
 #     and KEY_CN in vars
 #   Default: None
 #
+# [*tls_auth*]
+#   Boolean. Activates tls-auth to Add an additional layer of HMAC
+#     authentication on top of the TLS control channel to protect
+#     against DoS attacks.
+#   Default: false
+#
+# [*tls_server*]
+#   Boolean. If proto not tcp it lets you choose if the parameter
+#     tls-server is set or not.
+#   Default: false
+#
+# [*tls_client*]
+#   Boolean. Allows you to set this server up as a tls-client connection.
+#   Default: false
+#
 # [*server_poll_timeout*]
 #   Integer. Value for timeout before trying the next server.
 #   Default: undef
@@ -282,6 +301,30 @@
 # [*ping_timer_rem*]
 #   Boolean. Do not start clocking timeouts until a remote peer connects.
 #   Default: false
+#
+# [*sndbuf*]
+#   Integer, Set the TCP/UDP socket send buffer size.
+#   Default: undef
+#
+# [*rcvbuf*]
+#   Integer, Set the TCP/UDP socket receive buffer size.
+#   Default: undef
+#
+# [*shared_ca*]
+#   String.  Name of a openssl::ca resource to use config with
+#   Default: undef
+#
+# [*autostart*]
+#   Boolean. Enable autostart for this server if openvpn::autostart_all is false.
+#   Default: undef
+#
+# [*ns_cert_type*]
+#   Boolean. Enable or disable use of ns-cert-type for the session. Generally used
+#   with client configuration
+#   Default: true
+#
+# [*custom_options*]
+#   Hash of additional options that you want to append to the configuration file.
 #
 # === Examples
 #
@@ -318,106 +361,161 @@
 # limitations under the License.
 #
 define openvpn::server(
-  $syslog = true,
-  $forward = false,
-  $subnet = undef,
-  $country = undef,
-  $province = undef,
-  $city = undef,
-  $organization = undef,
-  $email = undef,
-  $remote = undef,
-  $common_name = 'server',
-  $compression = 'comp-lzo',
-  $dev = 'tun0',
-  $user = 'nobody',
-  $group = false,
-  $ipp = false,
-  $duplicate_cn = false,
-  $local = $::ipaddress_eth0,
-  $logfile = false,
-  $port = '1194',
-  $proto = 'tcp',
-  $status_log = "${name}/openvpn-status.log",
-  $server = '',
-  $server_ipv6 = '',
-  $server_bridge = '',
-  $push = [],
-  $route = [],
-  $keepalive = '',
-  $ssl_key_size = 1024,
-  $topology = 'net30',
-  $c2c = false,
-  $tcp_nodelay = false,
-  $ccd_exclusive = false,
-  $pam = false,
-  $management = false,
-  $management_ip = 'localhost',
-  $management_port = 7505,
-  $client_to_client = false,
-  $up = '',
-  $down = '',
-  $username_as_common_name = false,
-  $client_cert_not_required = false,
-  $ldap_enabled = false,
-  $ldap_server = '',
-  $ldap_binddn = '',
-  $ldap_bindpass = '',
-  $ldap_u_basedn = '',
-  $ldap_g_basedn = '',
-  $ldap_gmember = false,
-  $ldap_u_filter = '',
-  $ldap_g_filter = '',
-  $ldap_memberatr = '',
-  $ldap_tls_enable = false,
-  $ldap_tls_ca_cert_file = '',
-  $ldap_tls_ca_cert_dir  = '',
+  $country                   = undef,
+  $province                  = undef,
+  $city                      = undef,
+  $organization              = undef,
+  $email                     = undef,
+  $remote                    = undef,
+  $common_name               = 'server',
+  $compression               = 'comp-lzo',
+  $dev                       = 'tun0',
+  $user                      = 'nobody',
+  $group                     = false,
+  $ipp                       = false,
+  $duplicate_cn              = false,
+  $local                     = $::ipaddress_eth0,
+  $logfile                   = false,
+  $port                      = '1194',
+  $proto                     = 'tcp',
+  $status_version            = '',
+  $status_log                = "/var/log/openvpn/${name}-status.log",
+  $server                    = '',
+  $server_ipv6               = '',
+  $server_bridge             = '',
+  $push                      = [],
+  $route                     = [],
+  $keepalive                 = '',
+  $fragment                  = false,
+  $ssl_key_size              = 1024,
+  $topology                  = 'net30',
+  $c2c                       = false,
+  $tcp_nodelay               = false,
+  $ccd_exclusive             = false,
+  $pam                       = false,
+  $management                = false,
+  $management_ip             = 'localhost',
+  $management_port           = 7505,
+  $up                        = '',
+  $down                      = '',
+  $username_as_common_name   = false,
+  $client_cert_not_required  = false,
+  $ldap_enabled              = false,
+  $ldap_server               = '',
+  $ldap_binddn               = '',
+  $ldap_bindpass             = '',
+  $ldap_u_basedn             = '',
+  $ldap_g_basedn             = '',
+  $ldap_gmember              = false,
+  $ldap_u_filter             = '',
+  $ldap_g_filter             = '',
+  $ldap_memberatr            = '',
+  $ldap_tls_enable           = false,
+  $ldap_tls_ca_cert_file     = '',
+  $ldap_tls_ca_cert_dir      = '',
   $ldap_tls_client_cert_file = '',
   $ldap_tls_client_key_file  = '',
-  $ca_expire = 3650,
-  $key_expire = 3650,
-  $key_cn = '',
-  $key_name = '',
-  $key_ou = '',
-  $verb = '',
-  $cipher = '',
-  $persist_key = false,
-  $persist_tun = false,
-  $server_poll_timeout = undef,
-  $ping_timer_rem = false,
+  $ca_expire                 = 3650,
+  $key_expire                = 3650,
+  $key_cn                    = '',
+  $key_name                  = '',
+  $key_ou                    = '',
+  $verb                      = '',
+  $cipher                    = '',
+  $persist_key               = false,
+  $persist_tun               = false,
+  $tls_auth                  = false,
+  $tls_server                = false,
+  $tls_client                = false,
+  $server_poll_timeout       = undef,
+  $ping_timer_rem            = false,
+  $sndbuf                    = undef,
+  $rcvbuf                    = undef,
+  $shared_ca                 = undef,
+  $autostart                 = undef,
+  $ns_cert_type              = true,
+  $custom_options            = {},
 ) {
 
   include openvpn
   Class['openvpn::install'] ->
-  Openvpn::Server[$name] ~>
-  Class['openvpn::service']
+  Openvpn::Server[$name]
 
-  $tls_server = $proto ? {
-    /tcp/   => true,
-    default => false
+  if $::openvpn::params::systemd {
+    $lnotify = Service["openvpn@${name}"]
+  } else {
+    $lnotify = Service['openvpn']
+    Openvpn::Server[$name] -> Service['openvpn']
   }
+
+  # Selection block to enable or disable tls-server flag
+  # Check if we want to run as a client or not
+  if !$tls_client {
+    if $tls_server {
+      $real_tls_server = $tls_server
+    } else {
+      $real_tls_server = $proto ? {
+        /tcp/   => true,
+        default => false
+      }
+    }
+  }
+
+  $pam_module_path = $::openvpn::params::pam_module_path
 
   $group_to_set = $group ? {
     false   => $openvpn::params::group,
     default => $group
   }
 
+  if $shared_ca {
+    $ca_name = $shared_ca
+  } else {
+    $ca_name = $name
+  }
+
   File {
-    group   => $group_to_set,
+    group => $group_to_set,
   }
 
   file { "/etc/openvpn/${name}":
-    ensure  => directory,
-    mode    => '0750',
+    ensure => directory,
+    mode   => '0750',
+    notify => $lnotify,
   }
 
-  if $remote == undef {
-    # VPN Server Mode
-    if $country == undef { fail("country has to be specified in server mode") }
-    if $province == undef { fail("province has to be specified in server mode") }
-    if $city == undef { fail("city has to be specified in server mode") }
-    if $organization == undef { fail("organization has to be specified in server mode") }
-    if $email == undef { fail("email has to be specified in server mode") }
+  if !$remote {
+    if !$shared_ca {
+      # VPN Server Mode
+      if $country == undef { fail('country has to be specified in server mode') }
+      if $province == undef { fail('province has to be specified in server mode') }
+      if $city == undef { fail('city has to be specified in server mode') }
+      if $organization == undef { fail('organization has to be specified in server mode') }
+      if $email == undef { fail('email has to be specified in server mode') }
+
+      $ca_common_name = $common_name
+      ::openvpn::ca { $name:
+        country      => $country,
+        province     => $province,
+        city         => $city,
+        organization => $organization,
+        email        => $email,
+        common_name  => $common_name,
+        group        => $group,
+        ssl_key_size => $ssl_key_size,
+        ca_expire    => $ca_expire,
+        key_expire   => $key_expire,
+        key_cn       => $key_cn,
+        key_name     => $key_name,
+        key_ou       => $key_ou,
+        tls_auth     => $tls_auth,
+      }
+    } else {
+      if !defined(Openvpn::Ca[$shared_ca]) {
+        fail("Openvpn::ca[${name}] is not defined for shared_ca")
+      }
+      $ca_common_name = getparam(Openvpn::Ca[$shared_ca], 'common_name')
+    }
 
     file {
       [ "/etc/openvpn/${name}/auth",
@@ -427,24 +525,9 @@ define openvpn::server(
         mode    => '0750',
         recurse => true,
     }
-
-    ::openvpn::ca { $name:
-      country      => $country,
-      province     => $province,
-      city         => $city,
-      organization => $organization,
-      email        => $email,
-      common_name  => $common_name,
-      group        => $group,
-      ssl_key_size => $ssl_key_size,
-      ca_expire    => $ca_expire,
-      key_expire   => $key_expire,
-      key_cn       => $key_cn,
-      key_name     => $key_name,
-      key_ou       => $key_ou,
-    }
   } else {
     # VPN Client Mode
+    $ca_common_name = $name
 
     file { "/etc/openvpn/${name}/keys":
       ensure  => directory,
@@ -453,12 +536,11 @@ define openvpn::server(
     }
   }
 
-  if $::osfamily == 'Debian' {
-    concat::fragment {
-      "openvpn.default.autostart.${name}":
-        content => "AUTOSTART=\"\$AUTOSTART ${name}\"\n",
-        target  => '/etc/default/openvpn',
-        order   => 10;
+  if ($::osfamily == 'Debian' and $::openvpn::autostart_all) or $autostart {
+    concat::fragment { "openvpn.default.autostart.${name}":
+      content => "AUTOSTART=\"\$AUTOSTART ${name}\"\n",
+      target  => '/etc/default/openvpn',
+      order   => '10',
     }
   }
 
@@ -466,7 +548,8 @@ define openvpn::server(
     owner   => root,
     group   => root,
     mode    => '0440',
-    content => template('openvpn/server.erb');
+    content => template('openvpn/server.erb'),
+    notify  => $lnotify,
   }
 
   if $ldap_enabled == true {
@@ -513,6 +596,14 @@ define openvpn::server(
       order   => '99'
     }
 
+  }
+
+  if $::openvpn::params::systemd {
+    service { "openvpn@${name}":
+      ensure  => running,
+      enable  => true,
+      require => [ File["/etc/openvpn/${name}.conf"], Openvpn::Ca[$ca_name] ]
+    }
   }
 
 }

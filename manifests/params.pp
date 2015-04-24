@@ -15,41 +15,54 @@
 # limitations under the License.
 #
 class openvpn::params {
-
-  $group = $::osfamily ? {
-    'RedHat' => 'nobody',
-    default  => 'nogroup'
-  }
-
   case $::osfamily {
     'RedHat': {
-      # Redhat/Centos >= 6
-      if($::operatingsystemmajrelease >= 6) {
-        # http://docs.puppetlabs.com/references/latest/function.html#versioncmp
-        if(versioncmp($::operatingsystemrelease, '6.4') < 0) { # Version < 6.4
-          $easyrsa_source = '/usr/share/openvpn/easy-rsa/2.0'
-        } else { # Version >= 6.4
-          $additional_packages = ['easy-rsa', 'openvpn-auth-ldap']
-          $easyrsa_source = '/usr/share/easy-rsa/2.0'
-          $ldap_auth_plugin_location = '/usr/lib64/openvpn/plugin/lib/openvpn-auth-ldap.so'
-        }
-      } else { # Redhat/CentOS < 6
+      $group            = 'nobody'
+      $link_openssl_cnf = true
+      $pam_module_path  = '/usr/lib64/openvpn/plugin/lib/openvpn-auth-pam.so'
+
+      # Redhat/Centos >= 7.0
+      if(versioncmp($::operatingsystemrelease, '7.0') >= 0) {
+        $additional_packages = ['easy-rsa']
+        $easyrsa_source      = '/usr/share/easy-rsa/2.0'
+        $systemd             = true
+
+      # Redhat/Centos >= 6.4
+      } elsif(versioncmp($::operatingsystemrelease, '6.4') >= 0) {
+        $additional_packages = ['easy-rsa']
+        $easyrsa_source      = '/usr/share/easy-rsa/2.0'
+        $systemd             = false
+
+      # Redhat/Centos < 6.4 >= 6
+      } elsif(versioncmp($::operatingsystemrelease, '6') >= 0) {
+        $easyrsa_source = '/usr/share/openvpn/easy-rsa/2.0'
+        $systemd        = false
+
+      # Redhat/Centos < 6
+      } else {
         $easyrsa_source = '/usr/share/doc/openvpn/examples/easy-rsa/2.0'
+        $systemd        = false
       }
+
+      $ldap_auth_plugin_location = undef # no ldap plugin on redhat/centos
     }
     'Debian': { # Debian/Ubuntu
-      case $::lsbdistid {
+      $group = 'nogroup'
+      $link_openssl_cnf = true
+      $pam_module_path = '/usr/lib/openvpn/openvpn-auth-pam.so'
+
+      case $::operatingsystem {
         'Debian': {
-          # Version > 8.0.0, jessie
-          if(versioncmp($::lsbdistrelease, '8.0.0') >= 0) {
-            $additional_packages = ['easy-rsa', 'openvpn-auth-ldap']
-            $easyrsa_source = '/usr/share/easy-rsa/'
+          # Version > 8.0, jessie
+          if(versioncmp($::operatingsystemrelease, '8.0') >= 0) {
+            $additional_packages       = ['easy-rsa', 'openvpn-auth-ldap']
+            $easyrsa_source            = '/usr/share/easy-rsa/'
             $ldap_auth_plugin_location = '/usr/lib/openvpn/openvpn-auth-ldap.so'
 
-          # Version > 7.0.0, wheezy
-          } elsif(versioncmp($::lsbdistrelease, '7.0.0') >= 0) {
-            $additional_packages = ['openvpn-auth-ldap']
-            $easyrsa_source = '/usr/share/doc/openvpn/examples/easy-rsa/2.0'
+          # Version > 7.0, wheezy
+          } elsif(versioncmp($::operatingsystemrelease, '7.0') >= 0) {
+            $additional_packages       = ['openvpn-auth-ldap']
+            $easyrsa_source            = '/usr/share/doc/openvpn/examples/easy-rsa/2.0'
             $ldap_auth_plugin_location = '/usr/lib/openvpn/openvpn-auth-ldap.so'
           } else {
             $easyrsa_source = '/usr/share/doc/openvpn/examples/easy-rsa/2.0'
@@ -57,16 +70,33 @@ class openvpn::params {
         }
         'Ubuntu': {
           # Version > 13.10, saucy
-          if(versioncmp($::lsbdistrelease, '13.10') >= 0) {
-            $additional_packages = ['easy-rsa', 'openvpn-auth-ldap']
-            $easyrsa_source = '/usr/share/easy-rsa/'
+          if(versioncmp($::operatingsystemrelease, '13.10') >= 0) {
+            $additional_packages       = ['easy-rsa', 'openvpn-auth-ldap']
+            $easyrsa_source            = '/usr/share/easy-rsa/'
             $ldap_auth_plugin_location = '/usr/lib/openvpn/openvpn-auth-ldap.so'
           } else {
             $easyrsa_source = '/usr/share/doc/openvpn/examples/easy-rsa/2.0'
           }
         }
         default: {
-          fail("Not supported OS / Distribution: ${::osfamily}/${::lsbdistid}")
+          fail("Not supported OS / Distribution: ${::osfamily}/${::operatingsystem}")
+        }
+      }
+
+      $systemd = false
+    }
+    'Linux': {
+      case $::operatingsystem {
+        'Amazon': {
+          $group               = 'nobody'
+          $additional_packages = ['easy-rsa']
+          $easyrsa_source      = '/usr/share/easy-rsa/2.0'
+          $systemd             = false
+          $link_openssl_cnf    = true
+          $pam_module_path     = '/usr/lib/openvpn/openvpn-auth-pam.so'
+        }
+        default: {
+          fail("Not supported OS / Distribution: ${::osfamily}/${::operatingsystem}")
         }
       }
     }
@@ -74,10 +104,4 @@ class openvpn::params {
       fail("Not supported OS family ${::osfamily}")
     }
   }
-
-  $link_openssl_cnf = $::osfamily ? {
-    /(Debian|RedHat)/ => true,
-    default           => false
-  }
-
 }

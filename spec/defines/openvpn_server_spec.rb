@@ -6,12 +6,12 @@ describe 'openvpn::server', :type => :define do
 
   let(:facts) { {
     :ipaddress_eth0 => '1.2.3.4',
-    :network_eth0   => '1.2.3.0',
-    :netmask_eth0   => '255.255.255.0',
+    :network_eth0 => '1.2.3.0',
+    :netmask_eth0 => '255.255.255.0',
     :concat_basedir => '/var/lib/puppet/concat',
-    :osfamily       => 'Debian',
-    :lsbdistid      => 'Ubuntu',
-    :lsbdistrelease => '12.04',
+    :osfamily => 'Debian',
+    :operatingsystem => 'Ubuntu',
+    :operatingsystemrelease => '12.04',
   } }
 
   context 'creating a server without any parameter' do
@@ -71,9 +71,7 @@ describe 'openvpn::server', :type => :define do
          with(:ensure =>'directory', :mode =>'0750', :recurse =>true, :group =>'nogroup') }
 
     # OpenVPN easy-rsa CA
-    it { should contain_openvpn__ca('test_server').
-         with(params)
-    }
+    it { should contain_openvpn__ca('test_server').with(params) }
 
     # VPN server config file itself
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^mode\s+server$/) }
@@ -89,7 +87,7 @@ describe 'openvpn::server', :type => :define do
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^group\s+nogroup$/) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^user\s+nobody$/) }
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^log\-append\s+test_server\/openvpn\.log$/) }
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^status\s+test_server\/openvpn\-status\.log$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^status\s+/var/log/openvpn/test_server-status\.log$}) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^dev\s+tun0$/) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^local\s+1\.2\.3\.4$/) }
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^ifconfig-pool-persist/) }
@@ -100,6 +98,10 @@ describe 'openvpn::server', :type => :define do
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/persist-key/) }
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/persist-tun/) }
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(%r{^duplicate-cn$}) }
+    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^ns-cert-type server/) }
+    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(%r{^tls-auth}) }
+    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(%r{^fragment}) }
+
   end
 
   context "creating a server setting all parameters" do
@@ -115,7 +117,7 @@ describe 'openvpn::server', :type => :define do
       'group'           => 'someone',
       'user'            => 'someone',
       'logfile'         => '/var/log/openvpn/test_server.log',
-      'status_log'      => '/var/log/openvpn/test_server_status.log',
+      'status_log'      => '/tmp/test_server_status.log',
       'dev'             => 'tun1',
       'up'              => '/tmp/up',
       'down'            => '/tmp/down',
@@ -142,6 +144,10 @@ describe 'openvpn::server', :type => :define do
       'persist_key'     => true,
       'persist_tun'     => true,
       'duplicate_cn'    => true,
+      'tls_auth'        => true,
+      'tls_server'      => true,
+      'fragment'        => 1412,
+      'custom_options'  => { 'this' => 'that' },
     } }
 
     let(:facts) { {
@@ -150,8 +156,8 @@ describe 'openvpn::server', :type => :define do
       :netmask_eth0   => '255.255.255.0',
       :concat_basedir => '/var/lib/puppet/concat',
       :osfamily       => 'Debian',
-      :lsbdistid      => 'Ubuntu',
-      :lsbdistrelease => '12.04',
+      :operatingsystem      => 'Ubuntu',
+      :operatingsystemrelease => '12.04',
     } }
 
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^mode\s+server$/) }
@@ -167,7 +173,7 @@ describe 'openvpn::server', :type => :define do
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^group\s+someone$/) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^user\s+someone$/) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^log\-append\s+/var/log/openvpn/test_server\.log$}) }
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^status\s+/var/log/openvpn/test_server_status\.log$}) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^status\s+/tmp/test_server_status\.log$}) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^dev\s+tun1$/) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^local\s+2\.3\.4\.5$/) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^server\s+2\.3\.4\.0\s+255\.255\.0\.0$/) }
@@ -188,9 +194,17 @@ describe 'openvpn::server', :type => :define do
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^down "/tmp/down"$}) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^script-security 2$}) }
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^duplicate-cn$}) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^tls-server$}) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^tls-auth\s+/etc/openvpn/test_server/keys/ta.key$}) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^key-direction 0$}) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^this that$}) }
+
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^fragment 1412$}) }
 
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^server-poll-timeout/) }
     it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^ping-timer-rem/) }
+    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^sndbuf/) }
+    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^rcvbuf/) }
 
     # OpenVPN easy-rsa CA
     it { should contain_openvpn__ca('test_server').
@@ -206,16 +220,20 @@ describe 'openvpn::server', :type => :define do
               :key_expire   => 365,
               :key_cn       => 'yolo',
               :key_name     => 'burp',
-              :key_ou       => 'NSA')
+              :key_ou       => 'NSA',
+              :tls_auth     => true)
     }
 
   end
 
   context "creating a server in client mode" do
+    let(:title) { 'test_client' }
     let(:params) { {
       'remote'              => ['vpn.example.com 12345'],
       'server_poll_timeout' => 1,
       'ping_timer_rem'      => true,
+      'tls_auth'            => true,
+      'tls_client'          => true,
     } }
 
     let(:facts) { {
@@ -224,21 +242,78 @@ describe 'openvpn::server', :type => :define do
       :netmask_eth0   => '255.255.255.0',
       :concat_basedir => '/var/lib/puppet/concat',
       :osfamily       => 'Debian',
-      :lsbdistid      => 'Ubuntu',
-      :lsbdistrelease => '12.04',
+      :operatingsystem      => 'Ubuntu',
+      :operatingsystemrelease => '12.04',
+    } }
+    it { should contain_file('/etc/openvpn/test_client.conf').with_content(/^client$/) }
+    it { should contain_file('/etc/openvpn/test_client.conf').
+         with_content(/^remote\s+vpn.example.com\s+12345$/) }
+    it { should contain_file('/etc/openvpn/test_client.conf').with_content(/^server-poll-timeout\s+1$/) }
+    it { should contain_file('/etc/openvpn/test_client.conf').with_content(/^ping-timer-rem$/) }
+    it { should contain_file('/etc/openvpn/test_client.conf').
+         with_content(%r{^ca /etc/openvpn/test_client/keys/ca.crt$}) }
+    it { should contain_file('/etc/openvpn/test_client.conf').
+         with_content(%r{^cert /etc/openvpn/test_client/keys/test_client.crt$}) }
+    it { should contain_file('/etc/openvpn/test_client.conf').
+         with_content(%r{^key /etc/openvpn/test_client/keys/test_client.key$}) }
+    it { should contain_file('/etc/openvpn/test_client/keys').
+         with(:ensure =>'directory', :mode =>'0750', :group =>'nogroup') }
+    it { should contain_file('/etc/openvpn/test_client.conf').with_content(/^ns-cert-type server/) }
+    it { should_not contain_file('/etc/openvpn/test_client.conf').with_content(/^mode\s+server$/) }
+    it { should_not contain_file('/etc/openvpn/test_client.conf').with_content(/^client-config-dir/) }
+    it { should_not contain_file('/etc/openvpn/test_client.conf').with_content(/^dh/) }
+    it { should contain_file('/etc/openvpn/test_client.conf').with_content(%r{^tls-client$}) }
+    it { should contain_file('/etc/openvpn/test_client.conf').with_content(%r{^key-direction 1$}) }
+
+    it { should_not contain_openvpn__ca('test_client') }
+  end
+
+  context "when altering send and receive buffers" do
+    let(:params) { {
+      'country'       => 'CO',
+      'province'      => 'ST',
+      'city'          => 'Some City',
+      'organization'  => 'example.org',
+      'email'         => 'testemail@example.org',
+      'sndbuf'        => 393216,
+      'rcvbuf'        => 393215,
     } }
 
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^client$/) }
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^remote\s+vpn.example.com\s+12345$/) }
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^server-poll-timeout\s+1$/) }
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^ping-timer-rem$/) }
-    it { should contain_file('/etc/openvpn/test_server/keys').
-         with(:ensure =>'directory', :mode =>'0750', :group =>'nogroup') }
-    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^mode\s+server$/) }
-    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^client-config-dir/) }
-    it { should_not contain_file('/etc/openvpn/test_server.conf').with_content(/^dh/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^sndbuf\s+393216$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^rcvbuf\s+393215$/) }
+  end
 
-    it { should_not contain_openvpn__ca('test_server') }
+  context "when using shared ca" do
+    let(:params) { {
+      'shared_ca'       => 'my_already_existing_ca',
+    } }
+    let(:pre_condition) { '
+      openvpn::ca{ "my_already_existing_ca":
+          common_name   => "custom_common_name",
+          country       => "CO",
+          province      => "ST",
+          city          => "Some City",
+          organization  => "example.org",
+          email         => "testemail@example.org"
+    }' }
+
+    it { should contain_openvpn__ca('my_already_existing_ca') }
+
+    # Check that certificate files point to the provide CA
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^mode\s+server$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^client\-config\-dir\s+\/etc\/openvpn\/test_server\/client\-configs$/) }
+
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^ca\s+\/etc\/openvpn\/my_already_existing_ca\/keys\/ca.crt$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^cert\s+\/etc\/openvpn\/my_already_existing_ca\/keys\/custom_common_name.crt$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^key\s+\/etc\/openvpn\/my_already_existing_ca\/keys\/custom_common_name.key$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^dh\s+\/etc\/openvpn\/my_already_existing_ca\/keys\/dh1024.pem$/) }
+  end
+
+  context "when using not existed shared ca" do
+    let(:params) { {
+      'shared_ca'       => 'my_already_existing_ca',
+    } }
+    it { expect { should compile }.to raise_error }
   end
 
   context "when RedHat based machine" do
@@ -247,7 +322,8 @@ describe 'openvpn::server', :type => :define do
       'province'      => 'ST',
       'city'          => 'Some City',
       'organization'  => 'example.org',
-      'email'         => 'testemail@example.org'
+      'email'         => 'testemail@example.org',
+      'pam'           => true,
     } }
 
     let(:facts) { { :osfamily => 'RedHat',
@@ -255,7 +331,8 @@ describe 'openvpn::server', :type => :define do
                     :operatingsystemmajrelease => 6,
                     :operatingsystemrelease => '6.4' } }
 
-    it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^group\s+nobody$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^group\s+nobody$}) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^plugin /usr/lib64/openvpn/plugin/lib/openvpn-auth-pam.so login$}) }
   end
 
   context "when Debian based machine" do
@@ -264,25 +341,43 @@ describe 'openvpn::server', :type => :define do
       'province'      => 'ST',
       'city'          => 'Some City',
       'organization'  => 'example.org',
-      'email'         => 'testemail@example.org'
+      'email'         => 'testemail@example.org',
+      'pam'           => true,
     } }
 
-    let(:facts) { { :osfamily => 'Debian', :lsbdistid => 'Debian', :concat_basedir => '/var/lib/puppet/concat' } }
-
-    # Configure to start vpn session
-    it { should contain_concat__fragment('openvpn.default.autostart.test_server').with(
-      'content' => "AUTOSTART=\"$AUTOSTART test_server\"\n",
-      'target'  => '/etc/default/openvpn'
-    )}
+    let(:facts) { { :osfamily => 'Debian', :operatingsystem => 'Debian', :concat_basedir => '/var/lib/puppet/concat' } }
 
     it { should contain_file('/etc/openvpn/test_server.conf').with_content(/^group\s+nogroup$/) }
+    it { should contain_file('/etc/openvpn/test_server.conf').with_content(%r{^plugin /usr/lib/openvpn/openvpn-auth-pam.so login$}) }
+
+    context 'enabled autostart' do
+      let(:pre_condition) { 'class { "openvpn": autostart_all => true }' }
+
+      # Configure to start vpn session
+      it { should contain_concat__fragment('openvpn.default.autostart.test_server').with(
+        'content' => "AUTOSTART=\"$AUTOSTART test_server\"\n",
+        'target'  => '/etc/default/openvpn'
+      )}
+    end
+
+    context 'disabled autostart_all' do
+      let(:pre_condition) { 'class { "openvpn": autostart_all => false }' }
+
+      # Configure to start vpn session
+      it { should_not contain_concat__fragment('openvpn.default.autostart.test_server') }
+
+      context 'but machine has autostart' do
+        before { params['autostart'] = true }
+        it { should contain_concat__fragment('openvpn.default.autostart.test_server') }
+      end
+    end
   end
 
   context 'ldap' do
     before do
       facts[:osfamily] = 'Debian'
-      facts[:lsbdistid] = 'Debian'
-      facts[:lsbdistrelease] = '8.0.0'
+      facts[:operatingsystem] = 'Debian'
+      facts[:operatingsystemrelease] = '8.0.0'
     end
     let(:params) { {
       'country'       => 'CO',
@@ -337,4 +432,24 @@ describe 'openvpn::server', :type => :define do
 
   end
 
+  context 'systemd enabled distro' do
+    let(:facts) { {
+      :concat_basedir         => '/var/lib/puppet/concat',
+      :osfamily               => 'RedHat',
+      :operatingsystemrelease => '7.0',
+    } }
+
+    let(:params) { {
+      'country'       => 'CO',
+      'province'      => 'ST',
+      'city'          => 'Some City',
+      'organization'  => 'example.org',
+      'email'         => 'testemail@example.org'
+    } }
+
+    it { should contain_service('openvpn@test_server').with(
+      :ensure => 'running',
+      :enable => true,
+    )}
+  end
 end

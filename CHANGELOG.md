@@ -2,12 +2,44 @@
 
 ## Next version
 
+## 2.8.0
+
+* Support for systems without `lsb-release` package ([#134](https://github.com/luxflux/puppet-openvpn/pull/134))
+* Support for Amazon EC2 OS ([#134](https://github.com/luxflux/puppet-openvpn/pull/134))
+* Move default log path for status log to `/var/log/openvpn` ([#139](https://github.com/luxflux/puppet-openvpn/pull/139))
+* Support for `format` parameter ([#138](https://github.com/luxflux/puppet-openvpn/pull/138))
+* Ability to configure autostart management on debian ([#144](https://github.com/luxflux/puppet-openvpn/pull/144))
+* Fix ordering in `/etc/default/openvpn` with puppet future parser ([#142](https://github.com/luxflux/puppet-openvpn/issues/142)
+* Support for TLS auth when server acts as client ([#147](https://github.com/luxflux/puppet-openvpn/pull/147))
+* Support for customer server options ([#147](https://github.com/luxflux/puppet-openvpn/pull/147))
+* Allow disabling `ns-cert-type server` for server-clients ([#147](https://github.com/luxflux/puppet-openvpn/pull/147))
+* Fix pam plugin path on RedHat/CentOS ([#148](https://github.com/luxflux/puppet-openvpn/pull/148))
+
+## 2.7.1
+
+* Fix server in client mode ([#137](https://github.com/luxflux/puppet-openvpn/pull/137))
+
+## 2.7.0
+
+* Support for removing a client specific conf file ([#115](https://github.com/luxflux/puppet-openvpn/pull/115))
+* Support for `rcvbuf` and `sndbuf` ([#116](https://github.com/luxflux/puppet-openvpn/pull/116))
+* Fix RedHat and CentOS package selection ([#97](https://github.com/luxflux/puppet-openvpn/pull/97))
+* Support for TLS and x509-name verification ([#118](https://github.com/luxflux/puppet-openvpn/pull/118))
+* Fix unset client cipher producing invalid configs ([#129](https://github.com/luxflux/puppet-openvpn/pull/129))
+* Support to share a CA between multiple server instances ([#112](https://github.com/luxflux/puppet-openvpn/pull/112))
+* Support for systemd ([#127](https://github.com/luxflux/puppet-openvpn/pull/127))
+
+## 2.6.0
+
 * Support for setting `up` and/or `down` scripts for clients  ([#89](https://github.com/luxflux/puppet-openvpn/pull/89))
 * Fixing the permissions of the created directories and files ([#90](https://github.com/luxflux/puppet-openvpn/pull/90), [#92](https://github.com/luxflux/puppet-openvpn/pull/92), [#94](https://github.com/luxflux/puppet-openvpn/pull/94), [#102](https://github.com/luxflux/puppet-openvpn/pull/102))
 * Refactor templates to use instance variables instead of `scope.lookupvar` ([#100](https://github.com/luxflux/puppet-openvpn/pull/100))
 * Add client mode server ([#100](https://github.com/luxflux/puppet-openvpn/pull/100))
 * Move CA management into its own defined type ([#100](https://github.com/luxflux/puppet-openvpn/pull/100))
 * Fix LDAP-Support on Debian Wheezy ([#103](https://github.com/luxflux/puppet-openvpn/pull/103))
+* Support for status-version ([#108](https://github.com/luxflux/puppet-openvpn/pull/108))
+* Change layout of downloadable client config to prevent overriding other client configurations when extracting the tarball ([#104](https://github.com/luxflux/puppet-openvpn/pull/104))
+* Add `ns-cert-type server` for server-clients ([#109](https://github.com/luxflux/puppet-openvpn/pull/109))
 
 ## 2.5.0
 

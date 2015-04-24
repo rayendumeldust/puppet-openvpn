@@ -10,6 +10,7 @@ Puppet module to manage OpenVPN servers
 * Support for multiple server instances
 * Support for LDAP-Authentication
 * Support for server instance in client mode
+* Support for TLS
 
 ## Supported OS
 
@@ -17,11 +18,11 @@ Puppet module to manage OpenVPN servers
 * Debian
 * CentOS
 * RedHat
-
+* Amazon
 
 ## Dependencies
-  - [puppetlabs-concat 1.0.1+](https://github.com/puppetlabs/puppet-concat)
-  - [puppetlabs-stdlib 1.0.0+](https://github.com/puppetlabs/puppet-concat)
+  - [puppetlabs-concat 1.0.1+](https://github.com/puppetlabs/puppetlabs-concat)
+  - [puppetlabs-stdlib 1.0.0+](https://github.com/puppetlabs/puppetlabs-stdlib)
 
 ## Example
 

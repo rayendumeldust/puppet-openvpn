@@ -1,7 +1,7 @@
 client
-ca keys/ca.crt
-cert keys/<%= @name %>.crt
-key keys/<%= @name %>.key
+ca keys/<%= @name %>/ca.crt
+cert keys/<%= @name %>/<%= @name %>.crt
+key keys/<%= @name %>/<%= @name %>.key
 dev <%= @dev %>
 proto <%= @proto %>
 remote <%= @remote_host %> <%= @port %>
@@ -19,13 +19,19 @@ persist-key
 <% if @persist_tun -%>
 persist-tun
 <% end -%>
-<% if @cipher  -%>
+<% if @cipher -%>
 cipher <%= @cipher %>
-<% end %>
+<% end -%>
 <% if @mute_replay_warnings -%>
 mute-replay-warnings
 <% end -%>
 ns-cert-type server
+<% if @sndbuf -%>
+sndbuf <%= @sndbuf %>
+<% end -%>
+<% if @rcvbuf -%>
+rcvbuf <%= @rcvbuf %>
+<% end -%>
 verb <%= @verb %>
 mute <%= @mute %>
 <% if @pam || @authuserpass -%>
@@ -45,4 +51,15 @@ up "<%= @up %>"
 <% end -%>
 <% if @down != '' -%>
 down "<%= @down %>"
+<% end -%>
+<% if @tls_auth -%>
+
+# tls authentification
+tls-client
+tls-auth keys/<%= @name %>/ta.key 1
+<% end -%>
+<% if @x509_name -%>
+
+# x509 name verification
+verify-x509-name "<%= @x509_name %>" name
 <% end -%>

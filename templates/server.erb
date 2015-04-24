@@ -3,6 +3,9 @@ mode server
 client-config-dir /etc/openvpn/<%= @name %>/client-configs
 <% else -%>
 client
+<% if @ns_cert_type -%>
+ns-cert-type server
+<% end -%>
 <% @remote.to_a.each do |rem| -%>
 remote <%= rem %>
 <% end -%>
@@ -10,14 +13,14 @@ remote <%= rem %>
 server-poll-timeout <%= @server_poll_timeout %>
 <% end -%>
 <% end -%>
-ca /etc/openvpn/<%= @name %>/keys/ca.crt
-cert /etc/openvpn/<%= @name %>/keys/<%= @common_name %>.crt
-key /etc/openvpn/<%= @name %>/keys/<%= @common_name %>.key
+ca /etc/openvpn/<%= @ca_name %>/keys/ca.crt
+cert /etc/openvpn/<%= @ca_name %>/keys/<%= @ca_common_name %>.crt
+key /etc/openvpn/<%= @ca_name %>/keys/<%= @ca_common_name %>.key
 <% unless @remote -%>
-dh /etc/openvpn/<%= @name %>/keys/dh<%= @ssl_key_size %>.pem
+dh /etc/openvpn/<%= @ca_name %>/keys/dh<%= @ssl_key_size %>.pem
 <% end -%>
 <% unless @remote -%>
-crl-verify /etc/openvpn/<%= @name %>/crl.pem
+crl-verify /etc/openvpn/<%= @ca_name %>/crl.pem
 <% end -%>
 <% if @proto == 'tcp' -%>
 proto <%= @proto %>-server
@@ -25,8 +28,11 @@ proto <%= @proto %>-server
 proto <%= @proto %>
 <% end -%>
 port <%= @port %>
-<% if @tls_server -%>
+<% if @real_tls_server -%>
 tls-server
+<% end -%>
+<% if @tls_client -%>
+tls-client
 <% end -%>
 <% if @compression != '' -%>
 <%= @compression %>
@@ -37,6 +43,9 @@ user <%= @user %>
 log-append <%= @logfile %>
 <% end -%>
 status <%= @status_log %>
+<% if @status_version != '' -%>
+status-version <%= @status_version %>
+<% end -%>
 dev <%= @dev %>
 <% if @local != '' -%>
 local <%= @local %>
@@ -58,6 +67,12 @@ push "<%= item %>"
 <% end -%>
 <% @route.each do |item| -%>
 route <%= item %>
+<% end -%>
+<% if @sndbuf -%>
+sndbuf <%= @sndbuf %>
+<% end -%>
+<% if @rcvbuf -%>
+rcvbuf <%= @rcvbuf %>
 <% end -%>
 <% if @keepalive != '' -%>
 keepalive <%= @keepalive %>
@@ -87,13 +102,10 @@ tcp-nodelay
 ccd-exclusive
 <% end -%>
 <% if @pam -%>
-plugin /usr/lib/openvpn/openvpn-auth-pam.so login
+plugin <%= @pam_module_path %> login
 <% end -%>
 <% if @management -%>
 management <%= @management_ip %> <%= @management_port %>
-<% end -%>
-<% if @client_to_client -%>
-client-to-client
 <% end -%>
 <% if @up != '' or @down != ''-%>
 script-security 2
@@ -119,6 +131,20 @@ duplicate-cn
 <% if @ping_timer_rem -%>
 ping-timer-rem
 <% end -%>
-<% if @syslog -%>
-syslog
+<% if @tls_auth -%>
+# tls authentification
+tls-auth /etc/openvpn/<%= @name %>/keys/ta.key
+<% unless @remote -%>
+key-direction 0
+<% else -%>
+key-direction 1
+<% end -%>
+<% end -%>
+<% if @fragment != false -%>
+fragment <%= @fragment %>
+<% end -%>
+
+#Additional custom options
+<% @custom_options.each_pair do |key, value| -%>
+<%= key %> <%= value %>
 <% end -%>
